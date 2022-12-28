@@ -1,4 +1,4 @@
-Function Get-PriceLimit
+Function Get-EnergiPris
 {
 
     [cmdletbinding()]
