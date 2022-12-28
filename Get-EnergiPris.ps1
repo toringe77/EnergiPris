@@ -43,7 +43,7 @@ Function Get-EnergiPris
             {
                 $nattHelg = $true
             }
-            elseif ( $hour -lt 6 -and $hour -gt 22 )
+            elseif ( $hour -lt 6 -or $hour -gt 22 )
             {
                 $nattHelg = $true
             } 
