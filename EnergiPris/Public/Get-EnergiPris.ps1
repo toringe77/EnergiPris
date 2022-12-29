@@ -1,5 +1,82 @@
 Function Get-EnergiPris
 {
+    <#
+        .SYNOPSIS
+        Regner ut netto pris per kWh.
+        .DESCRIPTION
+        Funksjonen vil regne ut netto pris inkl. nettleie og strømstøtte.
+        .PARAMETER GjennomsnittsPris
+        (Foreløpig) månedlig gjennomsnittspris
+        .PARAMETER Pris
+        Timespris nå.
+        .PARAMETER LavestePris
+        Laveste mulige pris på strømbørsen (Satt til 0.01 kr). Denne brukes til å sette dagsprisen for resten av dagene i måneden, om den skulle bli veldig lav.
+        .PARAMETER IgnoreNettleie
+        Utelat nettleie fra prisen.
+        .PARAMETER NettleieDag
+        Nettleie dagtid 2022
+        .PARAMETER NettleieNatt
+        Nettleie kveldstid og helg 2022
+        .PARAMETER NettleieDagRedusert
+        Nettleie dagtid, januar til april 2023 (redusert avgift)
+        .PARAMETER NettleieNattRedusert
+        Nettleie kveldstid og helg, januar til april 2023 (redusert avgift)
+        .PARAMETER Prosent
+        Strømstøtteprosenten. For tiden 90%.
+        .PARAMETER Grense
+        Nedre grense for strømstøtten. 0,7 kr i 2022 eksl. mva.
+        .PARAMETER MND
+        Overstyre måned (1-12)
+        .PARAMETER Dag
+        Overstyre dag (1-31)
+        .PARAMETER Anno
+        Overstyre år.
+        .PARAMETER Time
+        Overstyre time på dagen. 
+        .INPUTS
+        Ingen
+        .OUTPUTS
+        Powershell objekt med priser i NOK.
+        .EXAMPLE
+        PS> Get-EnergiPris -GjennomsnittsPris 3.6629 -Pris 1.4819
+        
+        Strømstøtte                    : 2,50911
+        Nettleie                       : 0,3739
+        NettoPris                      : -0,65331
+        Nullnivå                       : 2,13521
+        Gjennomsnittspris Pessimistisk : 3,4272
+        Strømstøtte Pessimistisk       : 2,29698
+        Nullnivpå Pessimistisk         : 1,92308
+        Nettopris Pessimistisk         : -0,44118
+
+        .EXAMPLE
+        PS> Get-EnergiPris -GjennomsnittsPris 3.6629 -Pris 1.4819 -Dag 30 -Time 22
+
+        Strømstøtte                    : 2,50911
+        Nettleie                       : 0,3739
+        NettoPris                      : -0,65331
+        Nullnivå                       : 2,13521
+        Gjennomsnittspris Pessimistisk : 3,5451
+        Strømstøtte Pessimistisk       : 2,40309
+        Nullnivpå Pessimistisk         : 2,02919
+        Nettopris Pessimistisk         : -0,54729
+
+        .EXAMPLE
+        PS> Get-EnergiPris -GjennomsnittsPris 3.6629 -Pris 1.4819 -Dag 15 -Time 22 -MND 1 -Anno 2023
+
+        Strømstøtte                    : 2,50911
+        Nettleie                       : 0,2904
+        NettoPris                      : -0,73681
+        Nullnivå                       : 2,21871
+        Gjennomsnittspris Pessimistisk : 1,7775
+        Strømstøtte Pessimistisk       : 0,81225
+        Nullnivpå Pessimistisk         : 0,52185
+        Nettopris Pessimistisk         : 0,96005
+  
+        .LINK
+        Most Recent Version: https://github.com/toringe77/EnergiPris
+    #>
+
 
     [cmdletbinding()]
     param(
@@ -30,9 +107,9 @@ Function Get-EnergiPris
         $MND = (get-date).Month,
         [int]
         $Dag = (Get-Date).Day,
-        [Alias("DayOfWeek")]
+        [Alias("År","Year")]
         [string]
-        $Ukedag = (get-date).Dayofweek,
+        $Anno = (Get-Date).Year,
         [Alias("Hour")]
         [int]
         $Time = (get-date).Hour
@@ -45,6 +122,7 @@ Function Get-EnergiPris
     {
         if ( -not $IgnoreNettleie )
         {
+            $Ukedag = ( Get-date -Day $Dag -Month $MND -Year $Anno ).DayOfWeek
             if ( $Ukedag -eq "Saturday" -or $Ukedag -eq "Sunday" -or $Ukedag -eq "Lørdag" -or $Ukedag -eq "Søndag" )
             {
                 $nattHelg = $true
