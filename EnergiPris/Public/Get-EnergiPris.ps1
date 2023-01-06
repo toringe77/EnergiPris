@@ -172,7 +172,7 @@ Function Get-EnergiPris
         if ( $pessimistiskNetto -lt 0 ) { $pessimistiskNetto = 0 }
         $pessimistiskGrenseverdi = $pessimistiskNetto - $nettLeie
         $pessimistiskNettoPris = $pris - $pessimistiskGrenseverdi
-        if ( $pessimistiskNettoPris -lt 0 ) { $pessimistiskNettoPris = 0 }
+
 
         [pscustomobject]@{
             'Strømstøtte' = $supportNetto
