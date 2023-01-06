@@ -158,6 +158,7 @@ Function Get-EnergiPris
         }
         # Calculate cost based on current average.
         $supportNetto =  ($GjennomsnittsPris - ( $Grense * 1.25 ) ) * $Prosent / 100
+        if ( $supportNetto -lt 0 ) { $supportNetto = 0 }
         $grenseverdi = $supportNetto - $nettLeie
         $nettoPris = $pris - $grenseverdi
 
@@ -168,8 +169,10 @@ Function Get-EnergiPris
         # Calculate average based on "worst case scenario" 
         $pessimistiskGjennomsnitt = [math]::round( (( $GjennomsnittsPris * $Dag + $numDaysLeft * $LavestePris ) / $lastDayOfMonth ),4 )
         $pessimistiskNetto =  ($pessimistiskGjennomsnitt - ( $Grense * 1.25 ) ) * $Prosent / 100
+        if ( $pessimistiskNetto -lt 0 ) { $pessimistiskNetto = 0 }
         $pessimistiskGrenseverdi = $pessimistiskNetto - $nettLeie
         $pessimistiskNettoPris = $pris - $pessimistiskGrenseverdi
+        if ( $pessimistiskNettoPris -lt 0 ) { $pessimistiskNettoPris = 0 }
 
         [pscustomobject]@{
             'Strømstøtte' = $supportNetto
