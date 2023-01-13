@@ -159,8 +159,10 @@ Function Get-EnergiPris
         # Calculate cost based on current average.
         $supportNetto =  ($GjennomsnittsPris - ( $Grense * 1.25 ) ) * $Prosent / 100
         if ( $supportNetto -lt 0 ) { $supportNetto = 0 }
+        $stromPris = $pris - $supportNetto
+        $nettoPris = $stromPris + $nettLeie
         $grenseverdi = $supportNetto - $nettLeie
-        $nettoPris = $pris - $grenseverdi
+        
 
         # Calculate Last day of month and days left of month
         $lastDayOfMonth = ((Get-date -Day 1 -Month $MND ).AddMonths(1).AddDays(-1)).Day
@@ -168,9 +170,10 @@ Function Get-EnergiPris
 
         # Calculate average based on "worst case scenario" 
         $pessimistiskGjennomsnitt = [math]::round( (( $GjennomsnittsPris * $Dag + $numDaysLeft * $LavestePris ) / $lastDayOfMonth ),4 )
-        $pessimistiskNetto =  ($pessimistiskGjennomsnitt - ( $Grense * 1.25 ) ) * $Prosent / 100
-        if ( $pessimistiskNetto -lt 0 ) { $pessimistiskNetto = 0 }
-        $pessimistiskGrenseverdi = $pessimistiskNetto - $nettLeie
+        $pessimistiskSupportNetto =  ($pessimistiskGjennomsnitt - ( $Grense * 1.25 ) ) * $Prosent / 100
+        if ( $pessimistiskSupportNetto -lt 0 ) { $pessimistiskSupportNetto = 0 }
+        $pessimistiskStromPris = $pris - $pessimistiskSupportNetto
+        $pessimistiskGrenseverdi = $pessimistiskSupportNetto - $nettLeie
         $pessimistiskNettoPris = $pris - $pessimistiskGrenseverdi
 
 
@@ -178,12 +181,15 @@ Function Get-EnergiPris
             'Strømstøtte' = $supportNetto
             'Nettleie' = $nettLeie
             'Nullnivå' = $grenseverdi
-            'NettoPris' = $nettoPris
+            'Netto strømpris' = $stromPris
+            'Netto totalpris' = $nettoPris
             'Gjennomsnittspris Pessimistisk' = $pessimistiskGjennomsnitt
-            'Strømstøtte Pessimistisk' = $pessimistiskNetto
+            'Strømstøtte Pessimistisk' = $pessimistiskSupportNetto
+            'Netto strømpris Pessimistisk' = $pessimistiskStromPris
             'Nullnivpå Pessimistisk' = $pessimistiskGrenseverdi
-            'Nettopris Pessimistisk' = $pessimistiskNettoPris
-        } | Select-Object 'Strømstøtte','Nettleie','NettoPris','Nullnivå','Gjennomsnittspris Pessimistisk','Strømstøtte Pessimistisk','Nullnivpå Pessimistisk','Nettopris Pessimistisk'
+            'Netto totalpris Pessimistisk' = $pessimistiskNettoPris
+            'Kommentar Pessimistisk Beregning' = "Beregnet ut fra $Dag dager med gj.pris $GjennomsnittsPris kr/kWh og $numDaysLeft dager med gj.pris $LavestePris kr/kWh."
+        } | Select-Object 'Strømstøtte','Nettleie','Netto strømpris','Netto totalpris','Nullnivå','Gjennomsnittspris Pessimistisk','Strømstøtte Pessimistisk','Netto strømpris Pessimistisk','Netto totalpris Pessimistisk','Nullnivpå Pessimistisk','Kommentar Pessimistisk Beregning'
     }
     End
     {
