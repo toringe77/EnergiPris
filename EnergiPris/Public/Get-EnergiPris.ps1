@@ -5,14 +5,18 @@ Function Get-EnergiPris
         Regner ut netto pris per kWh.
         .DESCRIPTION
         Funksjonen vil regne ut netto pris inkl. nettleie og strømstøtte.
-        .PARAMETER GjennomsnittsPris
-        (Foreløpig) månedlig gjennomsnittspris
         .PARAMETER Pris
         Timespris nå.
+        .PARAMETER GjennomsnittsPris
+        (Foreløpig) månedlig gjennomsnittspris
+        .PARAMETER Offline
+        Ikke hent månedlig gjennomsnittspris fra web, selv om Gjennomsnittspris ikke er satt.
         .PARAMETER LavestePris
         Laveste mulige pris på strømbørsen (Satt til 0.01 kr). Denne brukes til å sette dagsprisen for resten av dagene i måneden, om den skulle bli veldig lav.
         .PARAMETER IgnoreNettleie
         Utelat nettleie fra prisen.
+        .PARAMETER TekstResultat
+        Skriv ut resultatet i tekst.
         .PARAMETER NettleieDag
         Nettleie dagtid 2022
         .PARAMETER NettleieNatt
@@ -80,16 +84,21 @@ Function Get-EnergiPris
 
     [cmdletbinding()]
     param(
-        [Alias("AveragePrice")]
-        [Parameter(Position=0,Mandatory=$true)]
-        [decimal]
-        $GjennomsnittsPris,
+        [Parameter(Position=0)]
         [Alias("Brutto","BruttoPris")]
         [decimal]
         $Pris,
+        [Alias("AveragePrice")]
+        [decimal]
+        $GjennomsnittsPris,
+        [switch]
+        $Offline,
         [decimal]
         $LavestePris = 0.01,
-        [switch]$IgnoreNettleie,
+        [switch]
+        $IgnoreNettleie,
+        [switch]
+        $TekstResultat,
         [decimal]
         $NettleieDag = 0.4364,
         [decimal]
@@ -116,10 +125,41 @@ Function Get-EnergiPris
     )
     Begin
     {
-        
+        $cacheFile = "$($env:temp)\energipriscache.txt"
+        if (-not $Gjennomsnittspris)
+        {
+            
+            if (Test-Path $cacheFile )
+            {
+                $fileDate = [datetime](get-childitem $cacheFile | Select-Object -ExpandProperty LastWriteTime ) | get-date -Format "ddMMyyyy"
+                if ($fileDate -eq (get-date -format "ddMMyyyy"))
+                {
+                    $GjennomsnittsPris = (get-content $cacheFile) / 100
+                }
+                else 
+                {
+                    $GjennomsnittsPris = $null
+                }
+            }
+            if (-not ($GjennomsnittsPris) -and -not ($Offline))
+            {
+                Write-Warning "Henter priser fra https://elwin.ge.no/prishistorikk/PrisDiagram_NO1.html"
+                $webReq = Invoke-WebRequest https://elwin.ge.no/prishistorikk/PrisDiagram_NO1.html -UseBasicParsing -DisableKeepAlive -ErrorAction Stop
+                $webReqMatches = $webReq.content | select-string "Snittpris hittil denne m.ned: <b>(.{1,4})<\/b>"
+                $GjennomsnittsPrisOre = $webReqMatches.matches.groups[1].value
+                $GjennomsnittsPrisOre | Out-File $cacheFile
+                $GjennomsnittsPris = $GjennomsnittsPrisOre / 100
+            }
+        }
+
     }
     Process
     {
+        if (-not $GjennomsnittsPris)
+        {
+            Write-host "Trenger Gjennomsnittspris. Kunne ikke hente fra cache eller fra web."
+            Return
+        }
         if ( -not $IgnoreNettleie )
         {
             $Ukedag = ( Get-date -Day $Dag -Month $MND -Year $Anno ).DayOfWeek
@@ -163,6 +203,17 @@ Function Get-EnergiPris
         $nettoPris = $stromPris + $nettLeie
         $grenseverdi = $supportNetto - $nettLeie
         
+        # Calculate what the actual % is
+        $tempReellPris = ($Pris - ( $Grense * 1.25 ) )
+        if ($tempReellPris -lt 0)
+        {
+            $reellProsent = 0
+        }
+        else 
+        {
+            $reellProsent =  [math]::round(($supportNetto / $tempReellPris * 100),2)
+        }
+        $reellTotalProsent = [math]::round(((1-($stromPris/$pris)) * 100),2)
 
         # Calculate Last day of month and days left of month
         $lastDayOfMonth = ((Get-date -Day 1 -Month $MND ).AddMonths(1).AddDays(-1)).Day
@@ -176,20 +227,74 @@ Function Get-EnergiPris
         $pessimistiskGrenseverdi = $pessimistiskSupportNetto - $nettLeie
         $pessimistiskNettoPris = $pris - $pessimistiskGrenseverdi
 
+        # Calculate the worst case scenario actual % support
+        if ($tempReellPris -lt 0)
+        {
+            $pessimistiskReellProsent =  0
+        }
+        else {
+            $pessimistiskReellProsent =  [math]::round(($pessimistiskSupportNetto / $tempReellPris * 100),2)
+        }
+        $pessimistiskReellTotalProsent = [math]::round(((1-($pessimistiskStromPris / $pris)) * 100),2) 
+        if ($TekstResultat)
+        {
+            if ($reellProsent -eq 0)
+            {
+                $reellTekst = ""
+            }
+            else 
+            {
+                $reellTekst = "vil da i realiteten være $($reellProsent)%, og "
+            }
+            if ($supportNetto -gt 0)
+            {
+                $stotteTekst = "støtter staten med $supportNetto kr/kWh. Strømstøtten $($reelltext)tilsvarer $($reellTotalProsent)% av prisen."
 
-        [pscustomobject]@{
-            'Strømstøtte' = $supportNetto
-            'Nettleie' = $nettLeie
-            'Nullnivå' = $grenseverdi
-            'Netto strømpris' = $stromPris
-            'Netto totalpris' = $nettoPris
-            'Gjennomsnittspris Pessimistisk' = $pessimistiskGjennomsnitt
-            'Strømstøtte Pessimistisk' = $pessimistiskSupportNetto
-            'Netto strømpris Pessimistisk' = $pessimistiskStromPris
-            'Nullnivpå Pessimistisk' = $pessimistiskGrenseverdi
-            'Netto totalpris Pessimistisk' = $pessimistiskNettoPris
-            'Kommentar Pessimistisk Beregning' = "Beregnet ut fra $Dag dager med gj.pris $GjennomsnittsPris kr/kWh og $numDaysLeft dager med gj.pris $LavestePris kr/kWh."
-        } | Select-Object 'Strømstøtte','Nettleie','Netto strømpris','Netto totalpris','Nullnivå','Gjennomsnittspris Pessimistisk','Strømstøtte Pessimistisk','Netto strømpris Pessimistisk','Netto totalpris Pessimistisk','Nullnivpå Pessimistisk','Kommentar Pessimistisk Beregning'
+            }
+            else 
+            {
+                $stotteTekst = "vil ikke staten betale ut noe da strømstøtten bortfaller."
+            }
+            if ($pessimistiskReellProsent -gt 0)
+            {
+                $pessimistiskStottetekst = "vil i realiteten bli $($pessimistiskReellProsent)%, og "
+
+            }
+            else 
+            {
+                $pessimistiskStottetekst = ""
+            }
+            if ($pessimistiskSupportNetto -gt 0)
+            {
+                $pessimistiskTekst = "og strømstøtten $pessimistiskSupportNetto kWh. Strømstøtten $($pessimistiskStottetekst)tilsvarer $($pessimistiskReellTotalProsent)% av strømprisen."
+            }
+            else 
+            {
+               $pessimistiskTekst = "men strømstøtten bortfaller."
+            }
+
+            "Med en pris på $Pris kr/kWh og månedlig gjennomsnittspris $GjennomsnittsPris kr/kWh, $stotteTekst Hvis dagsprisen blir $LavestePris kr/kWh resten av måneden ($numDaysLeft dager), blir gjennomsnittet $pessimistiskGjennomsnitt kr/kWh, $pessimistiskTekst Netto pris vil bli $nettoPris kr/kWh med dagens gjennomsnittspris. $pessimistiskNettoPris kr/kWh hvis dagsprisen resten av måneden blir $LavestePris kr/kWh. En tjener penger når prisen er under $grenseverdi kr/kWh med dagens gjennomsnitt, og $pessimistiskGrenseverdi kr/kWh, hvis dagsprisen resten av måneden blir $LavestePris kr/kWh."
+        }
+        else 
+        {
+            [pscustomobject]@{
+                'Gjennomsnittspris' = $GjennomsnittsPris
+                'Strømstøtte' = $supportNetto
+                'Nettleie' = $nettLeie
+                'Nullnivå' = $grenseverdi
+                'Netto strømpris' = $stromPris
+                'Reell strømstøtteprosent' = $reellProsent
+                'Reell totalprosent' = $reellTotalProsent
+                'Netto totalpris' = $nettoPris
+                'Gjennomsnittspris Pessimistisk' = $pessimistiskGjennomsnitt
+                'Strømstøtte Pessimistisk' = $pessimistiskSupportNetto
+                'Netto strømpris Pessimistisk' = $pessimistiskStromPris
+                'Reell strømstøtteprosent Pessimistisk' = $pessimistiskReellProsent
+                'Reell totalprosent Pessimistisk' = $pessimistiskReellTotalProsent
+                'Nullnivpå Pessimistisk' = $pessimistiskGrenseverdi
+                'Netto totalpris Pessimistisk' = $pessimistiskNettoPris
+            } | Select-Object 'Gjennomsnittspris','Strømstøtte','Reell strømstøtteprosent','Reell totalprosent','Nettleie','Netto strømpris','Netto totalpris','Nullnivå','Gjennomsnittspris Pessimistisk','Strømstøtte Pessimistisk','Reell strømstøtteprosent Pessimistisk','Reell totalprosent Pessimistisk','Netto strømpris Pessimistisk','Netto totalpris Pessimistisk','Nullnivpå Pessimistisk'
+        }
     }
     End
     {
