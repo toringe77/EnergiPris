@@ -4,11 +4,15 @@ Function Get-EnergiPris
         .SYNOPSIS
         Regner ut netto pris per kWh.
         .DESCRIPTION
-        Funksjonen vil regne ut netto pris inkl. nettleie og strømstøtte.
+        Funksjonen vil regne ut netto pris inkl. nettleie og strømstøtte (Netto totalpris). Den vil også beregne hva som er grensen for når du faktisk får penger for å bruke strøm (Nullnivå (Pessimistisk)). Det er også en del andre tall for den som er intressert. Funksjonen vil hente foreløpig gjennomsnittspris fra web, med mindre man spesifiserer dette manuelt. Denne prisen blir cachet og den henter kun data på nytt på en ny dag for å hindre hamring av websiden. Man kan spesifisere region, og også time, dag, måned og år.
+        
+        MERK: Prisene og avgiftene vil variere, så denne funksjonen er ferskvare.
         .PARAMETER Pris
-        Timespris nå.
+        Timespris du vil basere deg på.
         .PARAMETER GjennomsnittsPris
         (Foreløpig) månedlig gjennomsnittspris
+        .PARAMETER Region
+        Velg region.
         .PARAMETER Offline
         Ikke hent månedlig gjennomsnittspris fra web, selv om Gjennomsnittspris ikke er satt.
         .PARAMETER LavestePris
@@ -42,43 +46,94 @@ Function Get-EnergiPris
         .OUTPUTS
         Powershell objekt med priser i NOK.
         .EXAMPLE
+        PS> Get-EnergiPris -Pris 1.4819
+
+        Gjennomsnittspris                     : 1,4
+        Strømstøtte                           : 0,4725
+        Reell strømstøtteprosent              : 99,49
+        Reell totalprosent                    : 35,00
+        Nettleie                              : 0,2904
+        Netto strømpris                       : 0,8774
+        Netto totalpris                       : 1,1678
+        Nullnivå                              : 0,1821
+        Gjennomsnittspris Pessimistisk        : 0,6377
+        Strømstøtte Pessimistisk              : 0
+        Reell strømstøtteprosent Pessimistisk : 0
+        Reell totalprosent Pessimistisk       : 0
+        Netto strømpris Pessimistisk          : 1,3499
+        Netto totalpris Pessimistisk          : 1,6403
+        Nullnivpå Pessimistisk                : -0,2904
+        Region                                : NO1 Øst-Norge
+
+
+        .EXAMPLE
         PS> Get-EnergiPris -GjennomsnittsPris 3.6629 -Pris 1.4819
         
-        Strømstøtte                    : 2,50911
-        Nettleie                       : 0,3739
-        NettoPris                      : -0,65331
-        Nullnivå                       : 2,13521
-        Gjennomsnittspris Pessimistisk : 3,4272
-        Strømstøtte Pessimistisk       : 2,29698
-        Nullnivpå Pessimistisk         : 1,92308
-        Nettopris Pessimistisk         : -0,44118
+        Gjennomsnittspris                     : 3,6629
+        Strømstøtte                           : 2,50911
+        Reell strømstøtteprosent              : 528,34
+        Reell totalprosent                    : 185,87
+        Nettleie                              : 0,2904
+        Netto strømpris                       : -1,15921
+        Netto totalpris                       : -0,86881
+        Nullnivå                              : 2,21871
+        Gjennomsnittspris Pessimistisk        : 1,6597
+        Strømstøtte Pessimistisk              : 0,70623
+        Reell strømstøtteprosent Pessimistisk : 148,71
+        Reell totalprosent Pessimistisk       : 52,32
+        Netto strømpris Pessimistisk          : 0,64367
+        Netto totalpris Pessimistisk          : 0,93407
+        Nullnivpå Pessimistisk                : 0,41583
+        Region                                : Gjennomsnittspris manuelt satt.
 
         .EXAMPLE
-        PS> Get-EnergiPris -GjennomsnittsPris 3.6629 -Pris 1.4819 -Dag 30 -Time 22
+        PS> Get-EnergiPris Get-EnergiPris 1.3499 -GjennomsnittsPris 3.6629 -Dag 24 -Time 6 
 
-        Strømstøtte                    : 2,50911
-        Nettleie                       : 0,3739
-        NettoPris                      : -0,65331
-        Nullnivå                       : 2,13521
-        Gjennomsnittspris Pessimistisk : 3,5451
-        Strømstøtte Pessimistisk       : 2,40309
-        Nullnivpå Pessimistisk         : 2,02919
-        Nettopris Pessimistisk         : -0,54729
+        Gjennomsnittspris                     : 3,6629
+        Strømstøtte                           : 2,50911
+        Reell strømstøtteprosent              : 528,34
+        Reell totalprosent                    : 185,87
+        Nettleie                              : 0,2904
+        Netto strømpris                       : -1,15921
+        Netto totalpris                       : -0,86881
+        Nullnivå                              : 2,21871
+        Gjennomsnittspris Pessimistisk        : 2,8381
+        Strømstøtte Pessimistisk              : 1,76679
+        Reell strømstøtteprosent Pessimistisk : 372,03
+        Reell totalprosent Pessimistisk       : 130,88
+        Netto strømpris Pessimistisk          : -0,41689
+        Netto totalpris Pessimistisk          : -0,12649
+        Nullnivpå Pessimistisk                : 1,47639
+        Region                                : Gjennomsnittspris manuelt satt.
 
         .EXAMPLE
-        PS> Get-EnergiPris -GjennomsnittsPris 3.6629 -Pris 1.4819 -Dag 15 -Time 22 -MND 1 -Anno 2023
+        PS> Get-EnergiPris 1.3499 -LavestePris 4               
 
-        Strømstøtte                    : 2,50911
-        Nettleie                       : 0,2904
-        NettoPris                      : -0,73681
-        Nullnivå                       : 2,21871
-        Gjennomsnittspris Pessimistisk : 1,7775
-        Strømstøtte Pessimistisk       : 0,81225
-        Nullnivpå Pessimistisk         : 0,52185
-        Nettopris Pessimistisk         : 0,96005
+        Gjennomsnittspris                     : 1,4
+        Strømstøtte                           : 0,4725
+        Reell strømstøtteprosent              : 99,49
+        Reell totalprosent                    : 35,00
+        Nettleie                              : 0,2904
+        Netto strømpris                       : 0,8774
+        Netto totalpris                       : 1,1678
+        Nullnivå                              : 0,1821
+        Gjennomsnittspris Pessimistisk        : 2,8258
+        Strømstøtte Pessimistisk              : 1,75572
+        Reell strømstøtteprosent Pessimistisk : 369,70
+        Reell totalprosent Pessimistisk       : 130,06
+        Netto strømpris Pessimistisk          : -0,40582
+        Netto totalpris Pessimistisk          : -0,11542
+        Nullnivpå Pessimistisk                : 1,46532
+        Region                                : NO1 Øst-Norge
   
+        .EXAMPLE
+        PS> Get-EnergiPris -Pris 3.5 -LavestePris 4 -TekstResultat
+
+        Gir resultatet i tekst.
         .LINK
         Most Recent Version: https://github.com/toringe77/EnergiPris
+        .Link
+        Prices are based data from Gudbrandsdal Energi: https://www.ge.no/timepriser-spotpris-no1
     #>
 
 
@@ -128,9 +183,21 @@ Function Get-EnergiPris
     )
     Begin
     {
+    }
+    Process
+    {
         $cacheFile = "$($env:temp)\energipriscache$($Region).txt"
         if (-not $Gjennomsnittspris)
         {
+            # Gjennomsnittspris is set automatically.
+            switch ($Region)
+            {
+                "NO1" { $RegionTekst = "NO1 Øst-Norge" }
+                "NO2" { $RegionTekst = "NO2 Sør-Norge" }
+                "NO3" { $RegionTekst = "NO3 Midt-Norge" }
+                "NO4" { $RegionTekst = "NO4 Nord-Norge" }
+                "NO5" { $RegionTekst = "NO5 Vest-Norge" }
+            }
             
             if (Test-Path $cacheFile )
             {
@@ -154,19 +221,12 @@ Function Get-EnergiPris
                 $GjennomsnittsPris = $GjennomsnittsPrisOre / 100
             }
         }
-        switch ($Region)
+        else 
         {
-            "NO1" { $RegionTekst = "NO1 Øst-Norge" }
-            "NO2" { $RegionTekst = "NO2 Sør-Norge" }
-            "NO3" { $RegionTekst = "NO3 Midt-Norge" }
-            "NO4" { $RegionTekst = "NO4 Nord-Norge" }
-            "NO5" { $RegionTekst = "NO5 Vest-Norge" }
-
+            $RegionTekst = "Gjennomsnittspris manuelt satt."
         }
-
-    }
-    Process
-    {
+        
+        
         if (-not $GjennomsnittsPris)
         {
             Write-host "Trenger Gjennomsnittspris. Kunne ikke hente fra cache eller fra web."
@@ -317,10 +377,10 @@ Function Get-EnergiPris
                 'Netto strømpris Pessimistisk' = $pessimistiskStromPris
                 'Reell strømstøtteprosent Pessimistisk' = $pessimistiskReellProsent
                 'Reell totalprosent Pessimistisk' = $pessimistiskReellTotalProsent
-                'Nullnivpå Pessimistisk' = $pessimistiskGrenseverdi
+                'Nullnivå Pessimistisk' = $pessimistiskGrenseverdi
                 'Netto totalpris Pessimistisk' = $pessimistiskNettoPris
                 'Region' = $RegionTekst
-            } | Select-Object 'Gjennomsnittspris','Strømstøtte','Reell strømstøtteprosent','Reell totalprosent','Nettleie','Netto strømpris','Netto totalpris','Nullnivå','Gjennomsnittspris Pessimistisk','Strømstøtte Pessimistisk','Reell strømstøtteprosent Pessimistisk','Reell totalprosent Pessimistisk','Netto strømpris Pessimistisk','Netto totalpris Pessimistisk','Nullnivpå Pessimistisk','Region'
+            } | Select-Object 'Gjennomsnittspris','Strømstøtte','Reell strømstøtteprosent','Reell totalprosent','Nettleie','Netto strømpris','Netto totalpris','Nullnivå','Gjennomsnittspris Pessimistisk','Strømstøtte Pessimistisk','Reell strømstøtteprosent Pessimistisk','Reell totalprosent Pessimistisk','Netto strømpris Pessimistisk','Netto totalpris Pessimistisk','Nullnivå Pessimistisk','Region'
         }
     }
     End
