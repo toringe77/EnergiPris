@@ -91,6 +91,9 @@ Function Get-EnergiPris
         [Alias("AveragePrice")]
         [decimal]
         $GjennomsnittsPris,
+        [ValidateSet("NO1","NO2","NO3","NO4","NO5")]
+        [string]
+        $Region = "NO1",
         [switch]
         $Offline,
         [decimal]
@@ -125,7 +128,7 @@ Function Get-EnergiPris
     )
     Begin
     {
-        $cacheFile = "$($env:temp)\energipriscache.txt"
+        $cacheFile = "$($env:temp)\energipriscache$($Region).txt"
         if (-not $Gjennomsnittspris)
         {
             
@@ -143,13 +146,22 @@ Function Get-EnergiPris
             }
             if (-not ($GjennomsnittsPris) -and -not ($Offline))
             {
-                Write-Warning "Henter priser fra https://elwin.ge.no/prishistorikk/PrisDiagram_NO1.html"
-                $webReq = Invoke-WebRequest https://elwin.ge.no/prishistorikk/PrisDiagram_NO1.html -UseBasicParsing -DisableKeepAlive -ErrorAction Stop
+                Write-Warning "Henter priser fra https://elwin.ge.no/prishistorikk_$($Region)/PrisDiagram_.html"
+                $webReq = Invoke-WebRequest https://elwin.ge.no/prishistorikk/PrisDiagram_$($Region).html -UseBasicParsing -DisableKeepAlive -ErrorAction Stop
                 $webReqMatches = $webReq.content | select-string "Snittpris hittil denne m.ned: <b>(.{1,4})<\/b>"
                 $GjennomsnittsPrisOre = $webReqMatches.matches.groups[1].value
                 $GjennomsnittsPrisOre | Out-File $cacheFile
                 $GjennomsnittsPris = $GjennomsnittsPrisOre / 100
             }
+        }
+        switch ($Region)
+        {
+            "NO1" { $RegionTekst = "NO1 Øst-Norge" }
+            "NO2" { $RegionTekst = "NO2 Sør-Norge" }
+            "NO3" { $RegionTekst = "NO3 Midt-Norge" }
+            "NO4" { $RegionTekst = "NO4 Nord-Norge" }
+            "NO5" { $RegionTekst = "NO5 Vest-Norge" }
+
         }
 
     }
@@ -307,7 +319,8 @@ Function Get-EnergiPris
                 'Reell totalprosent Pessimistisk' = $pessimistiskReellTotalProsent
                 'Nullnivpå Pessimistisk' = $pessimistiskGrenseverdi
                 'Netto totalpris Pessimistisk' = $pessimistiskNettoPris
-            } | Select-Object 'Gjennomsnittspris','Strømstøtte','Reell strømstøtteprosent','Reell totalprosent','Nettleie','Netto strømpris','Netto totalpris','Nullnivå','Gjennomsnittspris Pessimistisk','Strømstøtte Pessimistisk','Reell strømstøtteprosent Pessimistisk','Reell totalprosent Pessimistisk','Netto strømpris Pessimistisk','Netto totalpris Pessimistisk','Nullnivpå Pessimistisk'
+                'Region' = $RegionTekst
+            } | Select-Object 'Gjennomsnittspris','Strømstøtte','Reell strømstøtteprosent','Reell totalprosent','Nettleie','Netto strømpris','Netto totalpris','Nullnivå','Gjennomsnittspris Pessimistisk','Strømstøtte Pessimistisk','Reell strømstøtteprosent Pessimistisk','Reell totalprosent Pessimistisk','Netto strømpris Pessimistisk','Netto totalpris Pessimistisk','Nullnivpå Pessimistisk','Region'
         }
     }
     End
