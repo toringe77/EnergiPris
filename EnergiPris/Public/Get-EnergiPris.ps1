@@ -87,7 +87,7 @@ Function Get-EnergiPris
         [Parameter(Position=0)]
         [Alias("Brutto","BruttoPris")]
         [decimal]
-        $Pris,
+        $Pris = 0,
         [Alias("AveragePrice")]
         [decimal]
         $GjennomsnittsPris,
@@ -207,14 +207,21 @@ Function Get-EnergiPris
         $tempReellPris = ($Pris - ( $Grense * 1.25 ) )
         if ($tempReellPris -lt 0)
         {
-            $reellProsent = 0
+            $reellProsent = $null
         }
         else 
         {
             $reellProsent =  [math]::round(($supportNetto / $tempReellPris * 100),2)
         }
-        $reellTotalProsent = [math]::round(((1-($stromPris/$pris)) * 100),2)
-
+        if ( $pris -gt 0)
+        {
+            $reellTotalProsent = [math]::round(((1-($stromPris/$pris)) * 100),2)
+        }
+        else 
+        {
+            $reellTotalProsent = $null
+        }
+        
         # Calculate Last day of month and days left of month
         $lastDayOfMonth = ((Get-date -Day 1 -Month $MND ).AddMonths(1).AddDays(-1)).Day
         $numDaysLeft = $lastDayOfMonth - $Dag
@@ -230,15 +237,22 @@ Function Get-EnergiPris
         # Calculate the worst case scenario actual % support
         if ($tempReellPris -lt 0)
         {
-            $pessimistiskReellProsent =  0
+            $pessimistiskReellProsent =  $null
         }
         else {
             $pessimistiskReellProsent =  [math]::round(($pessimistiskSupportNetto / $tempReellPris * 100),2)
         }
-        $pessimistiskReellTotalProsent = [math]::round(((1-($pessimistiskStromPris / $pris)) * 100),2) 
+        if ($pris -gt 0)
+        {
+            $pessimistiskReellTotalProsent = [math]::round(((1-($pessimistiskStromPris / $pris)) * 100),2) 
+        }
+        else 
+        {
+            $pessimistiskReellTotalProsent = $null
+        }
         if ($TekstResultat)
         {
-            if ($reellProsent -eq 0)
+            if (-not $reellProsent)
             {
                 $reellTekst = ""
             }
@@ -248,7 +262,7 @@ Function Get-EnergiPris
             }
             if ($supportNetto -gt 0)
             {
-                $stotteTekst = "støtter staten med $supportNetto kr/kWh. Strømstøtten $($reelltext)tilsvarer $($reellTotalProsent)% av prisen."
+                $stotteTekst = "støtter staten med $supportNetto kr/kWh. Strømstøtten $($reellTekst)tilsvarer $($reellTotalProsent)% av prisen."
 
             }
             else 
