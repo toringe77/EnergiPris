@@ -158,13 +158,13 @@ Function Get-EnergiPris
         [switch]
         $TekstResultat,
         [decimal]
-        $NettleieDag = 0.4364,
+        $NettleieDag = 0.4355,
         [decimal]
-        $NettleieNatt = 0.3739,
+        $NettleieNatt = 0.3730,
         [decimal]
-        $NettleieDagRedusert = 0.3529,
+        $NettleieDagRedusert = 0.3520,
         [decimal]
-        $NettleieNattRedusert = 0.2904,
+        $NettleieNattRedusert = 0.2895,
         [decimal]
         $Prosent = 90,
         [decimal]
